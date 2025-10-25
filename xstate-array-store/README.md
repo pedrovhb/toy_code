@@ -171,6 +171,136 @@ Patches follow the [RFC-6902 JSON Patch](https://tools.ietf.org/html/rfc6902) st
 }
 ```
 
+## Syncing with External Systems
+
+The library provides powerful utilities for applying patches and syncing state across systems.
+
+### Basic Patch Application
+
+Apply patches to any data structure (arrays, objects, Maps, etc.):
+
+```typescript
+import { applyPatchesToState } from './sync';
+
+const state = { users: ['Alice', 'Bob'], count: 2 };
+const patches = [
+  { op: 'add', path: ['users', 2], value: 'Charlie' },
+  { op: 'replace', path: ['count'], value: 3 }
+];
+
+const newState = applyPatchesToState(state, patches);
+// newState = { users: ['Alice', 'Bob', 'Charlie'], count: 3 }
+```
+
+### SyncTarget - Receiving Remote Updates
+
+For one-way syncing (receiving updates from a remote source):
+
+```typescript
+import { SyncTarget } from './sync';
+
+const target = new SyncTarget({
+  initialState: { todos: [] },
+  onChange: (newState, patches) => {
+    console.log('State updated:', newState);
+  },
+  onRemotePatches: (patches) => {
+    console.log('Received patches from remote');
+  }
+});
+
+// When you receive patches from remote
+websocket.on('message', (data) => {
+  const { patches } = JSON.parse(data);
+  target.applyRemotePatches(patches);
+});
+```
+
+### SyncManager - Bidirectional Syncing
+
+For two-way syncing with automatic patch transmission:
+
+```typescript
+import { SyncManager } from './sync';
+
+const manager = new SyncManager({
+  initialState: { items: [] },
+  sendToRemote: async (patches) => {
+    // Send patches to server
+    await fetch('/api/sync', {
+      method: 'POST',
+      body: JSON.stringify(patches)
+    });
+  },
+  onLocalChange: (state, patches) => {
+    console.log('Local change:', patches);
+  },
+  onRemoteChange: (state, patches) => {
+    console.log('Remote change:', patches);
+  },
+  autoSync: true // Automatically sync local changes
+});
+
+// Apply local changes (will auto-sync if autoSync is true)
+await manager.applyLocalPatches(patches, inversePatches);
+
+// Apply remote changes
+manager.applyRemotePatches(remotePatchesFromServer);
+```
+
+### Syncing Two Stores
+
+Keep two XState stores in sync:
+
+```typescript
+import { createArrayStore } from './index';
+import { applyPatchesToState } from './sync';
+
+const storeA = createArrayStore([1, 2, 3]);
+const storeB = createArrayStore([1, 2, 3]);
+
+// Sync A → B
+storeA.on('patches', ({ patches }) => {
+  const currentB = storeB.getSnapshot().context;
+  const newContext = applyPatchesToState(currentB, patches);
+  storeB.send({ type: 'replace', items: newContext.items });
+});
+
+// Sync B → A
+storeB.on('patches', ({ patches }) => {
+  const currentA = storeA.getSnapshot().context;
+  const newContext = applyPatchesToState(currentA, patches);
+  storeA.send({ type: 'replace', items: newContext.items });
+});
+```
+
+### Patch Utilities
+
+Useful utilities for working with patches:
+
+```typescript
+import { PatchUtils } from './sync';
+
+// Format patches for logging
+console.log(PatchUtils.formatPatches(patches));
+// Output:
+// ADD users.2 = {"name":"Charlie"}
+// REPLACE count = 3
+
+// Filter patches by path
+const userPatches = PatchUtils.filterByPath(patches, ['users']);
+
+// Check if patches affect a path
+const affectsUsers = PatchUtils.affectsPath(patches, ['users']);
+
+// Get root paths affected
+const roots = PatchUtils.getAffectedRootPaths(patches);
+// Returns: ['users', 'count']
+
+// Merge multiple patch arrays
+const merged = PatchUtils.mergePatches(patches1, patches2, patches3);
+```
+
 ## Use Cases
 
 ### Real-time Collaboration
@@ -251,14 +381,20 @@ auditLog.forEach(({ patches }) => {
 });
 ```
 
-## Running the Example
+## Running the Examples
 
 ```bash
 npm install
+
+# Run the basic array store example
 npm run dev
+
+# Run the sync examples (patch application, SyncTarget, SyncManager, etc.)
+npm run dev:sync
 ```
 
-This will run the comprehensive example in `src/example.ts` showing all operations and their patches.
+- `src/example.ts` - Shows all array operations and their patches
+- `src/sync-examples.ts` - Demonstrates syncing patterns and utilities
 
 ## Building
 
