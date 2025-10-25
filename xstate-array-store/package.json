@@ -1,0 +1,30 @@
+{
+  "name": "xstate-array-store",
+  "version": "0.1.0",
+  "description": "XState store wrapping an array with Immer patches for fine-grained syncing",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/example.ts",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "xstate",
+    "store",
+    "immer",
+    "patches",
+    "sync"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@xstate/store": "^2.0.0",
+    "immer": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
